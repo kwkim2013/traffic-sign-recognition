@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# Dataset (large files)
+data/train/
+data/test/
+*.zip
+
+# Trained models
+models/*.keras
+models/*.h5
+
+# Generated results
+results/*.png
+results/*.csv
+
+# OS
+.DS_Store
+Thumbs.db
