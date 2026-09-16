@@ -150,4 +150,5 @@ python -m pip install -r requirements-lock.txt
 python src/gui.py
 ```
 
-사진 업로드, 직접 영역 선택, TensorFlow 분류, Matplotlib Top 5 그래프, pandas CSV 저장을 지원합니다. 자세한 구조와 사용법은 [GUI 안내](GUI_GUIDE.md)를 참고하세요. 현재는 잘라낸 표지판의 종류를 분류하며 자동 위치 검출은 하지 않습니다.
+사진 업로드, 직접 영역 선택, TensorFlow 분류, Matplotlib Top 5 그래프, pandas CSV 저장을 지원합니다. 자세한 구조와 사용법은 [GUI 안내](GUI_GUIDE.md)를 참고하세요. 현재는 잘라낸 표지판의 종류를 분류하며 자동 위치 검출은 하지 않습니다. 학습 모델은 GitHub에 포함되지 않으므로 먼저 학습하거나 별도로 보관한 `.keras` 모델을 선택해야 합니다.
+
