@@ -21,7 +21,7 @@ python src/gui.py
 4. 오른쪽에서 클래스 이름, softmax 점수, Top 5 그래프, 43개 클래스 결과표를 확인합니다.
 5. **결과 CSV 저장** / **그래프 PNG 저장**으로 분석 결과를 저장합니다.
 
-기본 모델은 `runs/cnn/best.keras`입니다. 다른 실험 모델은 **모델 선택**으로 불러옵니다. 입력 `(None, 32, 32, 3)` / 출력 `(None, 43)`인 Keras 모델을 사용해야 하며 클래스 순서는 GTSRB ID 0~42입니다. 직접 학습했거나 신뢰하는 모델 파일을 사용하세요.
+기본 모델 경로는 `runs/cnn/best.keras`입니다. 학습 모델은 생성 파일이라 GitHub 저장소에는 포함되지 않습니다. GitHub에서 clone했다면 먼저 `python src/train.py --output-dir runs/cnn`으로 학습하거나, 별도로 보관한 `best.keras`를 해당 경로에 복사하세요. 다른 위치의 모델은 **모델 선택**으로 불러올 수 있습니다. 입력 `(None, 32, 32, 3)` / 출력 `(None, 43)`인 Keras 모델을 사용해야 하며 클래스 순서는 GTSRB ID 0~42입니다. 직접 학습했거나 신뢰하는 모델 파일을 사용하세요.
 
 사진이나 선택 영역, 모델을 바꾸면 이전 결과가 초기화됩니다. 모델 로딩과 추론 중에는 입력 변경을 잠시 막고 진행 표시를 보여줍니다. 처리 중 창 닫기는 완료 후 가능합니다. 첫 추론은 TensorFlow 로딩 때문에 수 초 걸릴 수 있습니다.
 
@@ -64,3 +64,4 @@ CSV에는 `image_path`, `class_id`, `class_name`, `score`, `model_path`, `roi`, 
 
 - [Qt for Python: Thread Signals](https://doc.qt.io/qtforpython-6/examples/example_widgets_thread_signals.html)
 - [Matplotlib: Embedding in Qt](https://matplotlib.org/3.7.4/gallery/user_interfaces/embedding_in_qt_sgskip.html)
+
