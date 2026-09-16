@@ -1,11 +1,15 @@
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.layers import Input, RandomRotation, RandomTranslation, RandomZoom, Conv2D, MaxPooling2D, Flatten, Dense, Dropout
 
 
 def build_model(input_shape=(32, 32, 3), num_classes=43):
     """Build a CNN model for GTSRB traffic-sign classification."""
     model = Sequential([
-        Conv2D(32, (3, 3), activation="relu", padding="same", input_shape=input_shape),
+        Input(shape=input_shape),
+        RandomRotation(0.028),
+        RandomTranslation(0.1, 0.1),
+        RandomZoom(0.1),
+        Conv2D(32, (3, 3), activation="relu", padding="same"),
         MaxPooling2D((2, 2)),
 
         Conv2D(64, (3, 3), activation="relu", padding="same"),

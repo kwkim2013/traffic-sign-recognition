@@ -23,5 +23,10 @@ results/*.png
 results/*.csv
 
 # OS
+data/Train/
+data/Test/
+data/Meta/
+data/*.csv
+runs/
 .DS_Store
 Thumbs.db

@@ -1,20 +1,6 @@
-# Dataset
+# 데이터 준비
 
-이 폴더에는 GTSRB (German Traffic Sign Recognition Benchmark) 학습 데이터를 배치합니다.
-
-프로젝트의 기본 학습 코드는 다음 구조를 기대합니다.
-
-```text
-data/
-└── train/
-    ├── 0/
-    │   ├── image1.png
-    │   └── ...
-    ├── 1/
-    ├── 2/
-    └── ...
-```
-
-각 폴더 이름은 GTSRB class ID이며 전체 분류 클래스 수는 43개입니다.
-
-데이터셋 이미지 파일은 용량 때문에 GitHub 저장소에 커밋하지 않습니다.
+저장소 루트에서 `python src/prepare_data.py /path/to/archive.zip`을 실행하세요.
+`Train.csv`, `Test.csv`, `Meta.csv`, `Train/`, `Test/`가 이 폴더에 생성됩니다.
+전체 실행 방법과 분할 기준은 상위 README.md를 참고하세요.
+데이터는 Git에서 제외됩니다.

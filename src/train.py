@@ -1,125 +1,61 @@
-from pathlib import Path
-
-import cv2
+"""Train the original CNN with reproducible track-disjoint validation."""
+import argparse
+import json
+import platform
+import tensorflow as tf
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import numpy as np
-from sklearn.model_selection import train_test_split
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-
+from pathlib import Path
+from data import ROOT, DATA, read_rows, split_rows, load_images
 from model import build_model
-
-IMAGE_SIZE = (32, 32)
-NUM_CLASSES = 43
-BATCH_SIZE = 64
-EPOCHS = 20
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-TRAIN_DIR = PROJECT_ROOT / "data" / "train"
-MODEL_DIR = PROJECT_ROOT / "models"
-RESULT_DIR = PROJECT_ROOT / "results"
-
-
-def load_dataset(data_dir):
-    images = []
-    labels = []
-
-    if not data_dir.exists():
-        raise FileNotFoundError(
-            f"Training dataset was not found: {data_dir}\n"
-            "Place GTSRB images in data/train/<class_id>/ before training."
-        )
-
-    for class_dir in sorted(data_dir.iterdir(), key=lambda p: int(p.name) if p.name.isdigit() else 999):
-        if not class_dir.is_dir() or not class_dir.name.isdigit():
-            continue
-
-        class_id = int(class_dir.name)
-        for image_path in class_dir.iterdir():
-            if image_path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".ppm"}:
-                continue
-
-            image = cv2.imread(str(image_path))
-            if image is None:
-                continue
-
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            image = cv2.resize(image, IMAGE_SIZE)
-            images.append(image)
-            labels.append(class_id)
-
-    if not images:
-        raise RuntimeError("No training images were found in data/train/<class_id>/. ")
-
-    return np.asarray(images, dtype=np.float32) / 255.0, np.asarray(labels, dtype=np.int32)
-
-
-def save_training_plot(history):
-    RESULT_DIR.mkdir(parents=True, exist_ok=True)
-
-    plt.figure(figsize=(10, 4))
-    plt.plot(history.history["accuracy"], label="Train Accuracy")
-    plt.plot(history.history["val_accuracy"], label="Validation Accuracy")
-    plt.plot(history.history["loss"], label="Train Loss")
-    plt.plot(history.history["val_loss"], label="Validation Loss")
-    plt.xlabel("Epoch")
-    plt.ylabel("Value")
-    plt.title("CNN Training History")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(RESULT_DIR / "training_history.png", dpi=150)
-    plt.close()
 
 
 def main():
-    print("[1/4] Loading GTSRB training images...")
-    x, y = load_dataset(TRAIN_DIR)
-    print(f"Loaded {len(x)} images")
-
-    x_train, x_val, y_train, y_val = train_test_split(
-        x,
-        y,
-        test_size=0.2,
-        random_state=42,
-        stratify=y,
-    )
-
-    augmentation = ImageDataGenerator(
-        rotation_range=10,
-        width_shift_range=0.1,
-        height_shift_range=0.1,
-        zoom_range=0.1,
-    )
-
-    print("[2/4] Building CNN model...")
-    model = build_model(input_shape=(32, 32, 3), num_classes=NUM_CLASSES)
-    model.summary()
-
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    best_model_path = MODEL_DIR / "traffic_sign_cnn.keras"
-
-    callbacks = [
-        ModelCheckpoint(best_model_path, monitor="val_accuracy", save_best_only=True),
-        EarlyStopping(monitor="val_loss", patience=4, restore_best_weights=True),
-    ]
-
-    print("[3/4] Training...")
-    history = model.fit(
-        augmentation.flow(x_train, y_train, batch_size=BATCH_SIZE),
-        validation_data=(x_val, y_val),
-        epochs=EPOCHS,
-        callbacks=callbacks,
-    )
-
-    save_training_plot(history)
-
-    val_loss, val_accuracy = model.evaluate(x_val, y_val, verbose=0)
-    print("[4/4] Finished")
-    print(f"Validation accuracy: {val_accuracy:.4f}")
-    print(f"Validation loss: {val_loss:.4f}")
-    print(f"Model: {best_model_path}")
-    print(f"Graph: {RESULT_DIR / 'training_history.png'}")
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--data-dir', type=Path, default=DATA)
+    p.add_argument('--output-dir', type=Path, default=ROOT / 'runs' / 'cnn')
+    p.add_argument('--epochs', type=int, default=20)
+    p.add_argument('--batch-size', type=int, default=64)
+    p.add_argument('--seed', type=int, default=42)
+    p.add_argument('--smoke', action='store_true', help='Small pipeline check; not a benchmark')
+    args = p.parse_args()
+    if args.epochs < 1 or args.batch_size < 1:
+        p.error('epochs and batch-size must be positive')
+    out = args.output_dir
+    out.mkdir(parents=True, exist_ok=False)
+    tf.keras.utils.set_random_seed(args.seed)
+    tf.config.experimental.enable_op_determinism()
+    train, val = split_rows(read_rows(args.data_dir, 'Train'), seed=args.seed)
+    if args.smoke:
+        train = [r for c in range(43) for r in [r for r in train if int(r['ClassId']) == c][:8]]
+        val = [r for c in range(43) for r in [r for r in val if int(r['ClassId']) == c][:2]]
+    (out / 'split.json').write_text(json.dumps({'train': [r['Path'] for r in train], 'validation': [r['Path'] for r in val]}, indent=2), encoding='utf-8')
+    config = {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}
+    config.update(python=platform.python_version(), tensorflow=tf.__version__, train_count=len(train), validation_count=len(val))
+    (out / 'config.json').write_text(json.dumps(config, indent=2), encoding='utf-8')
+    x, y = load_images(args.data_dir, train)
+    xv, yv = load_images(args.data_dir, val)
+    model = build_model()
+    callbacks = [tf.keras.callbacks.ModelCheckpoint(str(out / 'best.keras'), monitor='val_loss', save_best_only=True),
+                 tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5),
+                 tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', patience=2, factor=0.5),
+                 tf.keras.callbacks.CSVLogger(str(out / 'history.csv'))]
+    history = model.fit(x, y, validation_data=(xv, yv), batch_size=args.batch_size, epochs=args.epochs, callbacks=callbacks, verbose=2)
+    best = tf.keras.models.load_model(out / 'best.keras')
+    metrics = best.evaluate(xv, yv, verbose=0, return_dict=True)
+    (out / 'validation.json').write_text(json.dumps(metrics, indent=2), encoding='utf-8')
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    for ax, metric in zip(axes, ['accuracy', 'loss']):
+        ax.plot(history.history[metric], label='Train')
+        ax.plot(history.history['val_' + metric], label='Validation')
+        ax.set(xlabel='Epoch (zero-based)', ylabel=metric)
+        ax.legend()
+    fig.tight_layout()
+    fig.savefig(out / 'history.png', dpi=150)
+    plt.close(fig)
+    print(json.dumps(metrics), out)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
